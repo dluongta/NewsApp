@@ -84,17 +84,15 @@ class NewsViewModel(app:Application, val newsRepository: NewsRepository):Android
         newsRepository.deleteResult(article)
     }
     fun internetConnection(context: Context): Boolean {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            // For API level 23 and above
-            val activeNetwork = connectivityManager.activeNetwork ?: return false
-            val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
-            networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-        } else {
-            // For API levels below 23
-            val networkInfo = connectivityManager.activeNetworkInfo
-            networkInfo != null && networkInfo.isConnected
+        (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).apply {
+            return getNetworkCapabilities(activeNetwork)?.run {
+                when {
+                    hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> true
+                    hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> true
+                    hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> true
+                    else -> false
+                }
+            } ?: false
         }
     }
     private suspend fun headlinesInternet(countryCode: String) {
