@@ -17,45 +17,55 @@ import android.net.NetworkCapabilities;
 import android.os.Build;
 import okio.IOException
 
-class NewsViewModel(app:Application, val newsRepository: NewsRepository):AndroidViewModel(app) {
+class NewsViewModel(app: Application, val newsRepository: NewsRepository): AndroidViewModel(app) {
     val headlines: MutableLiveData<Resource<NewsResponse>> = MutableLiveData()
-    var headlinesPage = 1
-    var headlinesResponse: NewsResponse? = null
     val searchNews: MutableLiveData<Resource<NewsResponse>> = MutableLiveData()
     var searchNewsPage = 1
     var searchNewsResponse: NewsResponse? = null
     var newSearchQuery: String? = null
     var oldSearchQuery: String? = null
+    var nextPageUrl: String? = null
+    private var isLoading = false
 
-    init {
-        getHeadlines("vi")
-    }
-
+    // Fetch headlines
     fun getHeadlines(countryCode: String) = viewModelScope.launch {
-        headlinesInternet(countryCode)
-    }
-    fun searchNews(searchQuery:String) = viewModelScope.launch {
-        searchNewsInternet(searchQuery)
+        if (isLoading) return@launch
+
+        isLoading = true
+        headlines.postValue(Resource.Loading())
+
+        try {
+            val response = if (nextPageUrl == null) {
+                newsRepository.getHeadlines(countryCode)
+            } else {
+                newsRepository.getNextPage(nextPageUrl!!)
+            }
+            headlines.postValue(handleHeadlinesResponse(response))
+        } catch (e: IOException) {
+            headlines.postValue(Resource.Error("Unable to connect"))
+        } finally {
+            isLoading = false
+        }
     }
 
     private fun handleHeadlinesResponse(response: Response<NewsResponse>): Resource<NewsResponse> {
         if (response.isSuccessful) {
             response.body()?.let { resultResponse ->
-                headlinesPage++
-                if (headlinesResponse == null) {
-                    headlinesResponse = resultResponse
-                } else {
-                    val oldArticles = headlinesResponse?.results
-                    val newArticles = resultResponse.results
-                    oldArticles?.addAll(newArticles)
-                }
-                return Resource.Success(headlinesResponse ?: resultResponse)
+                nextPageUrl = resultResponse.nextPage
 
+                return Resource.Success(resultResponse)
             }
         }
         return Resource.Error(response.message())
-
     }
+    init {
+        getHeadlines("vi")
+    }
+
+    fun searchNews(searchQuery: String) = viewModelScope.launch {
+        searchNewsInternet(searchQuery)
+    }
+
     private fun handleSearchNewsResponse(response: Response<NewsResponse>): Resource<NewsResponse> {
         if (response.isSuccessful) {
             response.body()?.let { resultResponse ->
@@ -70,19 +80,21 @@ class NewsViewModel(app:Application, val newsRepository: NewsRepository):Android
                     oldArticles?.addAll(newArticles)
                 }
                 return Resource.Success(searchNewsResponse ?: resultResponse)
-
             }
         }
         return Resource.Error(response.message())
-
     }
-    fun addToFavourites(article:Result) = viewModelScope.launch {
+
+    fun addToFavourites(article: Result) = viewModelScope.launch {
         newsRepository.upsert(article)
     }
+
     fun getFavouriteNews() = newsRepository.getFavouriteNews()
-    fun deleteArticle(article:Result) = viewModelScope.launch {
+
+    fun deleteArticle(article: Result) = viewModelScope.launch {
         newsRepository.deleteResult(article)
     }
+
     fun internetConnection(context: Context): Boolean {
         (context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager).apply {
             return getNetworkCapabilities(activeNetwork)?.run {
@@ -95,24 +107,25 @@ class NewsViewModel(app:Application, val newsRepository: NewsRepository):Android
             } ?: false
         }
     }
+
     private suspend fun headlinesInternet(countryCode: String) {
         headlines.postValue(Resource.Loading())
         try {
             if (internetConnection(this.getApplication())) {
                 val response = newsRepository.getHeadlines(countryCode)
                 headlines.postValue(handleHeadlinesResponse(response))
-            }else {
+            } else {
                 headlines.postValue(Resource.Error("No internet connection"))
             }
-        } catch (t:Throwable) {
-            when(t) {
+        } catch (t: Throwable) {
+            when (t) {
                 is IOException -> headlines.postValue(Resource.Error("Unable to connect"))
                 else -> headlines.postValue(Resource.Error("No signal"))
             }
         }
     }
 
-    private suspend fun searchNewsInternet(searchQuery:String) {
+    private suspend fun searchNewsInternet(searchQuery: String) {
         newSearchQuery = searchQuery
         searchNews.postValue(Resource.Loading())
         try {
@@ -122,8 +135,8 @@ class NewsViewModel(app:Application, val newsRepository: NewsRepository):Android
             } else {
                 searchNews.postValue(Resource.Error("No internet connection"))
             }
-        } catch (t:Throwable) {
-            when(t) {
+        } catch (t: Throwable) {
+            when (t) {
                 is IOException -> searchNews.postValue(Resource.Error("Unable to connect"))
                 else -> searchNews.postValue(Resource.Error("No signal"))
             }
