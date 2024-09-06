@@ -31,7 +31,7 @@ private var isLoading = false
 private var isScrolling = false
 class HeadlinesFragment : Fragment(R.layout.fragment_headlines) {
 
-     lateinit var newsAdapter: NewsAdapter
+    lateinit var newsAdapter: NewsAdapter
     private lateinit var retryButton: Button
     private lateinit var errorText: TextView
     private lateinit var itemHeadlinesError: CardView
@@ -49,29 +49,40 @@ class HeadlinesFragment : Fragment(R.layout.fragment_headlines) {
         errorText = view.findViewById(R.id.errorText)
         newsViewModel  = (activity as NewsActivity).newsViewModel
         setupHeadlinesRecycler()
+        newsAdapter.setOnItemClickListener {
+            val bundle = Bundle().apply {
+                putSerializable("Result",it)
+
+            }
+            findNavController().navigate(R.id.action_headlinesFragment_to_articleFragment,bundle)
+
+        }
 
 
         newsViewModel.headlines.observe(viewLifecycleOwner, Observer { response ->
             when (response) {
-                is Resource.Success -> {
+                is Resource.Success<*> -> {
                     hideProgressBar()
                     hideErrorMessage()
                     response.data?.let { newsResponse ->
                         newsAdapter.differ.submitList(newsResponse.results.toList())
                     }
                 }
-                is Resource.Error -> {
+                is Resource.Error<*> -> {
                     hideProgressBar()
                     response.message?.let { message ->
                         Toast.makeText(activity, "Error: $message", Toast.LENGTH_LONG).show()
                         showErrorMessage(message)
                     }
                 }
-                is Resource.Loading -> {
+                is Resource.Loading<*> -> {
                     showProgressBar()
                 }
             }
         })
+        retryButton.setOnClickListener{
+            newsViewModel.getHeadlines("vi")
+        }
 
         // Initial load
         newsViewModel.getHeadlines("vi")
@@ -89,10 +100,10 @@ class HeadlinesFragment : Fragment(R.layout.fragment_headlines) {
                     val visibleItemCount = layoutManager.childCount
                     val totalItemCount = layoutManager.itemCount
                     val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
-
+                    val isTotalMoreThanVisible = totalItemCount >= visibleItemCount
+                    val isNotAtBeginning = firstVisibleItemPosition >= 0
                     val isAtLastItem = (visibleItemCount + firstVisibleItemPosition >= totalItemCount)
-                    val shouldPaginate = isAtLastItem && !isLoading && !isError
-
+                    val shouldPaginate = isAtLastItem && isNotAtBeginning && isTotalMoreThanVisible && !isLoading && !isError
                     if (shouldPaginate) {
                         isScrolling = false
                         newsViewModel.getHeadlines("vi")
@@ -132,35 +143,34 @@ class HeadlinesFragment : Fragment(R.layout.fragment_headlines) {
         isError = true
     }
 }
-    val scrollListener = object : RecyclerView.OnScrollListener() {
-        override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
-            super.onScrolled(recyclerView, dx, dy)
-            val layoutManager = recyclerView.layoutManager as LinearLayoutManager
-            val visibleItemCount = layoutManager.childCount
-            val totalItemCount = layoutManager.itemCount
-            val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
+val scrollListener = object : RecyclerView.OnScrollListener() {
+    override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+        super.onScrolled(recyclerView, dx, dy)
+        val layoutManager = recyclerView.layoutManager as LinearLayoutManager
+        val visibleItemCount = layoutManager.childCount
+        val totalItemCount = layoutManager.itemCount
+        val firstVisibleItemPosition = layoutManager.findFirstVisibleItemPosition()
 
-            val isAtLastItem = (visibleItemCount + firstVisibleItemPosition >= totalItemCount)
-            val shouldPaginate = isAtLastItem
+        val isAtLastItem = (visibleItemCount + firstVisibleItemPosition >= totalItemCount)
+        val shouldPaginate = isAtLastItem
 
-            if (shouldPaginate) {
-                isScrolling = false
-                newsViewModel.getHeadlines("vi")
+        if (shouldPaginate) {
+            isScrolling = false
+            newsViewModel.getHeadlines("vi")
 
-            } else {
-                isScrolling = true
-            }
-
-        }
-
-        override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-            super.onScrollStateChanged(recyclerView, newState)
-            if (newState == AbsListView.OnScrollListener.SCROLL_STATE_TOUCH_SCROLL) {
-                isScrolling = true
-
-            }
+        } else {
+            isScrolling = true
         }
 
     }
 
+    override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+        super.onScrollStateChanged(recyclerView, newState)
+        if (newState == AbsListView.OnScrollListener.SCROLL_STATE_TOUCH_SCROLL) {
+            isScrolling = true
+
+        }
+    }
+
+}
 
