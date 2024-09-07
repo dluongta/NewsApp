@@ -23,6 +23,7 @@ import com.example.newsapp.util.Constants
 import com.example.newsapp.util.Resource
 import com.example.newsapp.R
 import com.example.newsapp.databinding.FragmentSearchBinding
+import com.example.newsapp.databinding.ItemErrorBinding
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
@@ -35,6 +36,8 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
     lateinit var errorText: TextView
     lateinit var itemSearchError: CardView
     lateinit var binding: FragmentSearchBinding
+    private lateinit var errorBinding: ItemErrorBinding
+
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -45,6 +48,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
         val inflater = requireContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
         val view:View = inflater.inflate(R.layout.item_error,null)
         retryButton =  view.findViewById(R.id.retryButton)
+        errorBinding = ItemErrorBinding.bind(binding.root.findViewById(R.id.itemSearchError))
         errorText = view.findViewById(R.id.errorText)
         newsViewModel  = (activity as NewsActivity).newsViewModel
         setupSearchRecycler()
@@ -96,7 +100,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
             }
         })
 
-        retryButton.setOnClickListener{
+        errorBinding.retryButton.setOnClickListener{
             if (binding.searchEdit.text.toString().isNotEmpty()){
                 newsViewModel.searchNews(binding.searchEdit.text.toString())
             } else {

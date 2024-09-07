@@ -40,7 +40,6 @@ class HeadlinesFragment : Fragment(R.layout.fragment_headlines) {
         val view:View = inflater.inflate(R.layout.item_error,null)
         // Inflate the error layout
         errorBinding = ItemErrorBinding.bind(binding.root.findViewById(R.id.itemHeadlinesError))
-
         newsViewModel = (activity as NewsActivity).newsViewModel
         setupHeadlinesRecycler()
         newsAdapter.setOnItemClickListener {
