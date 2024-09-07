@@ -33,9 +33,11 @@ class HeadlinesFragment : Fragment(R.layout.fragment_headlines) {
     private var isError = false
     private var isLoading = false
     private var isScrolling = false
+    lateinit var nextButton: Button
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         binding = FragmentHeadlinesBinding.bind(view)
+        nextButton = view.findViewById(R.id.nextButton)
         val inflater = requireContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
         val view:View = inflater.inflate(R.layout.item_error,null)
         // Inflate the error layout
@@ -77,6 +79,9 @@ class HeadlinesFragment : Fragment(R.layout.fragment_headlines) {
         errorBinding.retryButton.setOnClickListener {
             newsViewModel.getHeadlines("vi")
         }
+        nextButton.setOnClickListener {
+            newsViewModel.getHeadlines("vi")
+        }
     }
 
     private fun setupHeadlinesRecycler() {
@@ -97,7 +102,6 @@ class HeadlinesFragment : Fragment(R.layout.fragment_headlines) {
                     val shouldPaginate = isAtLastItem && isNotAtBeginning && isTotalMoreThanVisible && !isLoading && !isError
                     if (shouldPaginate) {
                         isScrolling = false
-                        newsViewModel.getHeadlines("vi")
                     } else {
                         isScrolling = true
                     }
@@ -112,6 +116,7 @@ class HeadlinesFragment : Fragment(R.layout.fragment_headlines) {
             })
         }
     }
+
 
     private fun hideProgressBar() {
         binding.paginationProgressBar.visibility = View.INVISIBLE
