@@ -73,7 +73,7 @@ class SearchFragment : Fragment(R.layout.fragment_search) {
                 }
             }
         }
-        newsViewModel.searchNews    .observe(viewLifecycleOwner, Observer { response ->
+        newsViewModel.searchNews.observe(viewLifecycleOwner, Observer { response ->
             when(response) {
                 is Resource.Success<*> -> {
                     hideProgressBar()
